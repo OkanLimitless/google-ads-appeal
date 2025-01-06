@@ -38,35 +38,49 @@ export default async function handler(req, res) {
 Each section must be separated by exactly "---" on its own line. No extra text before, between, or after sections. Professional tone.`;
 
         console.log('Sending request to OpenAI API...');
-        const response = await axios.post(`${apiBase}/chat/completions`, {
+        const requestBody = {
             model: "gpt-3.5-turbo",
             messages: [{ role: "user", content: prompt }],
             max_tokens: 500,
             temperature: 0.3,
-            stop: ["\n---\n"],
-            presence_penalty: 1.5,
-            stream: false
-        }, {
+            presence_penalty: 1.5
+        };
+
+        console.log('Request Body:', JSON.stringify(requestBody, null, 2));
+
+        const response = await axios.post(`${apiBase}/chat/completions`, requestBody, {
             headers: { 
                 Authorization: `Bearer ${apiKey}`,
                 'Content-Type': 'application/json'
             },
             timeout: 10000
+        }).catch(error => {
+            console.error('OpenAI API Error:', {
+                message: error.message,
+                response: error.response?.data,
+                status: error.response?.status,
+                headers: error.response?.headers
+            });
+            throw error;
         });
 
         console.log('Received API response:', response.data);
         
         if (!response.data?.choices?.[0]?.message?.content) {
+            console.error('Invalid response structure:', response.data);
             throw new Error('Invalid response structure from API');
         }
 
         const fullResponse = response.data.choices[0].message.content.trim();
+        console.log('Full Response Content:', fullResponse);
+        
         let sections = fullResponse.split(/\n\s*---\s*\n/).map(s => s.trim());
+        console.log('Split Sections:', sections);
 
         if (sections.length !== 3) {
             console.error('Invalid section count:', sections.length);
             console.error('Full response:', fullResponse);
-            throw new Error('Invalid response format from API. Expected 3 sections separated by "---"');
+            throw new Error(`Invalid response format from API. Expected 3 sections but got ${sections.length}`);
         }
 
         res.status(200).json({
