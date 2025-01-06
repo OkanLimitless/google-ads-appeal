@@ -74,7 +74,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 generateBtn.disabled = true;
                 generateBtn.textContent = 'Generating...';
 
-                const response = await fetch('/api/generate-appeal.js', {
+                const response = await fetch('/api/generate-appeal', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ businessName })

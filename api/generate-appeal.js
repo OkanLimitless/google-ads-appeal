@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 
     try {
         const apiKey = process.env.OPENAI_API_KEY;
-        const apiBase = process.env.OPENAI_API_BASE || 'https://api.deepseek.com/v1';
+        const apiBase = process.env.OPENAI_API_BASE || 'https://api.openai.com/v1';
 
         if (!apiKey) {
             throw new Error('API key is missing');
@@ -35,7 +35,7 @@ export default async function handler(req, res) {
 Each section must be separated by exactly "---" on its own line. No extra text before, between, or after sections. Professional tone.`;
 
         const response = await axios.post(`${apiBase}/chat/completions`, {
-            model: "deepseek-chat",
+            model: "gpt-3.5-turbo",
             messages: [{ role: "user", content: prompt }],
             max_tokens: 500,
             temperature: 0.3,
@@ -63,10 +63,15 @@ Each section must be separated by exactly "---" on its own line. No extra text b
             additionalInfo: sections[2]
         });
     } catch (error) {
-        console.error('Error generating appeal:', error);
+        console.error('Error generating appeal:', {
+            message: error.message,
+            stack: error.stack,
+            response: error.response?.data
+        });
         res.status(500).json({ 
             error: 'Failed to generate appeal',
-            details: error.message 
+            details: error.message,
+            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
         });
     }
 }
