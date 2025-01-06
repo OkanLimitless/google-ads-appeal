@@ -1,2 +1,6 @@
 .aider*
 .env
+node_modules/
+.vercel/
+.env
+.DS_Store
