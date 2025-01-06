@@ -82,7 +82,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 if (!response.ok) {
                     const errorData = await response.json();
-                    throw new Error(errorData.error || `Failed to generate. Status ${response.status}`);
+                    console.error('API Error Details:', errorData);
+                    throw new Error(errorData.details || errorData.error || `Failed to generate. Status ${response.status}`);
                 }
 
                 const data = await response.json();
