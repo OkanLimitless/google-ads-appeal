@@ -89,6 +89,33 @@ button:hover {
   line-height: 1.6;
 }
 
+.copyable {
+  cursor: pointer;
+  position: relative;
+  transition: background-color 0.2s ease;
+}
+
+.copyable:hover {
+  background-color: rgba(26, 115, 232, 0.05);
+}
+
+.copy-feedback {
+  position: absolute;
+  bottom: 10px;
+  right: 10px;
+  background: var(--primary-color);
+  color: white;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .status-container {
   position: fixed;
   top: 0;

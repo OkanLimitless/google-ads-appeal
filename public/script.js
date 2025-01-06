@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 const data = await response.json();
                 console.log('API Response:', data);
                 
-                // Update output sections with proper formatting
+                // Update output sections with proper formatting and copy functionality
                 const formatContent = (content) => {
                     return content
                         .split('\n\n')  // Split into paragraphs
@@ -97,9 +97,39 @@ document.addEventListener('DOMContentLoaded', function() {
                         .join('');  // Join without extra spacing
                 };
 
+                // Function to handle click-to-copy
+                function makeSectionCopyable(sectionElement, content) {
+                    sectionElement.classList.add('copyable');
+                    sectionElement.title = 'Click to copy';
+                    
+                    sectionElement.addEventListener('click', () => {
+                        navigator.clipboard.writeText(content).then(() => {
+                            // Show copied feedback
+                            const feedback = document.createElement('div');
+                            feedback.className = 'copy-feedback';
+                            feedback.textContent = 'Copied!';
+                            sectionElement.appendChild(feedback);
+                            
+                            // Remove feedback after 2 seconds
+                            setTimeout(() => {
+                                feedback.remove();
+                            }, 2000);
+                        }).catch(err => {
+                            console.error('Failed to copy:', err);
+                            alert('Failed to copy text. Please try again.');
+                        });
+                    });
+                }
+
+                // Format and make sections copyable
                 elements.overviewSection.innerHTML = formatContent(data.businessModelOverview);
+                makeSectionCopyable(elements.overviewSection, data.businessModelOverview);
+                
                 elements.detailsSection.innerHTML = formatContent(data.businessModelDetails);
+                makeSectionCopyable(elements.detailsSection, data.businessModelDetails);
+                
                 elements.additionalInfoSection.innerHTML = formatContent(data.additionalInfo);
+                makeSectionCopyable(elements.additionalInfoSection, data.additionalInfo);
                 
                 // Show output container with animation
                 const outputContainer = document.querySelector('.output-container');
