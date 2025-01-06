@@ -27,18 +27,21 @@ export default async function handler(req, res) {
             throw new Error('API key is missing. Please set OPENAI_API_KEY in environment variables.');
         }
 
-        const prompt = `Create Google Ads appeal for ${businessName}. Format the response EXACTLY like this:
+        const prompt = `Create a Google Ads appeal for ${businessName}. Format the response EXACTLY like this:
 
 [Business Model Overview]
-Core services, target audience, value proposition
+Please provide a brief description of your business model being advertised in this account.
+(Your answer here)
 
 [Business Model Details]
-Specific offerings, website functionality, benefits
+Please provide a brief description of your business model being advertised in this domain(s).
+(Your answer here)
 
 [Additional Information]
-Compliance measures, corrective actions, review request
+Do you have any additional information you'd like us to take into account during the review?
+(Your answer here)
 
-Each section must be clearly marked with its header in square brackets. Do not include any additional text, explanations, or formatting. Use professional tone.`;
+Use a professional tone. Do not include any text before or after these bracketed sections. Do not include disclaimers, extra headings, or explanations. Each section must be clearly marked with its header in square brackets.`;
 
         console.log('Sending request to Deepseek API...');
         const requestBody = {
