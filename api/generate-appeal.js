@@ -47,6 +47,11 @@ Each section must be separated by exactly "---" on its own line. No extra text b
         };
 
         console.log('Request Body:', JSON.stringify(requestBody, null, 2));
+        console.log('Full Request URL:', `${apiBase}/chat/completions`);
+        console.log('Request Headers:', {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json'
+        });
 
         const response = await axios.post(`${apiBase}/chat/completions`, requestBody, {
             headers: { 
@@ -55,11 +60,16 @@ Each section must be separated by exactly "---" on its own line. No extra text b
             },
             timeout: 10000
         }).catch(error => {
-            console.error('OpenAI API Error:', {
+            console.error('Deepseek API Error:', {
                 message: error.message,
                 response: error.response?.data,
                 status: error.response?.status,
-                headers: error.response?.headers
+                headers: error.response?.headers,
+                config: {
+                    url: error.config?.url,
+                    method: error.config?.method,
+                    data: error.config?.data
+                }
             });
             throw error;
         });
