@@ -1,31 +1,72 @@
 import axios from 'axios';
 
 export default async function handler(req, res) {
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method Not Allowed' });
-  }
-
-  const { businessName } = req.body;
-  if (!businessName) {
-    return res.status(400).json({ error: 'Business name is required' });
-  }
-
-  try {
-    if (!businessName || typeof businessName !== 'string') {
-      return res.status(400).json({ error: 'Invalid business name' });
-    }
+    // Add CORS headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
     
-    const generatedText = `This is your generated appeal for "${businessName}".`;
-    return res.status(200).json({ 
-      success: true,
-      generatedText 
-    });
-  } catch (err) {
-    console.error('Error generating appeal:', err);
-    return res.status(500).json({ 
-      success: false,
-      error: 'Failed to generate appeal',
-      message: err.message 
-    });
-  }
+    if (req.method !== 'POST') {
+        return res.status(405).json({ error: 'Method Not Allowed' });
+    }
+
+    const { businessName } = req.body;
+
+    if (!businessName) {
+        return res.status(400).json({ error: 'Business name is required' });
+    }
+
+    try {
+        const apiKey = process.env.OPENAI_API_KEY;
+        const apiBase = process.env.OPENAI_API_BASE || 'https://api.deepseek.com/v1';
+
+        if (!apiKey) {
+            throw new Error('API key is missing');
+        }
+
+        const prompt = `Create Google Ads appeal for ${businessName}. Format exactly like this:
+
+1. Core services, target audience, value prop
+---
+2. Specific offerings, website function, benefits
+---
+3. Compliance measures, corrective actions, review request
+
+Each section must be separated by exactly "---" on its own line. No extra text before, between, or after sections. Professional tone.`;
+
+        const response = await axios.post(`${apiBase}/chat/completions`, {
+            model: "deepseek-chat",
+            messages: [{ role: "user", content: prompt }],
+            max_tokens: 500,
+            temperature: 0.3,
+            stop: ["\n---\n"],
+            presence_penalty: 1.5,
+            stream: false
+        }, {
+            headers: { 
+                Authorization: `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            timeout: 10000
+        });
+
+        const fullResponse = response.data.choices[0].message.content.trim();
+        let sections = fullResponse.split(/\n\s*---\s*\n/).map(s => s.trim());
+
+        if (sections.length !== 3) {
+            throw new Error('Invalid response format from API');
+        }
+
+        res.status(200).json({
+            businessModelOverview: sections[0],
+            businessModelDetails: sections[1],
+            additionalInfo: sections[2]
+        });
+    } catch (error) {
+        console.error('Error generating appeal:', error);
+        res.status(500).json({ 
+            error: 'Failed to generate appeal',
+            details: error.message 
+        });
+    }
 }

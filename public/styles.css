@@ -65,14 +65,57 @@ button:hover {
   background-color: #1557b0;
 }
 
-#appeal-output {
+.output-container {
+  display: none;
+  margin-top: 2rem;
+}
+
+.output-section {
   background: var(--white);
   padding: 1.5rem;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  margin-top: 1rem;
-  white-space: pre-wrap;
-  line-height: 1.8;
+  margin-bottom: 1.5rem;
+}
+
+.output-section h2 {
+  color: var(--primary-color);
+  margin-top: 0;
+  margin-bottom: 1rem;
+}
+
+.output-section p {
+  margin: 0.5rem 0;
+  line-height: 1.6;
+}
+
+.status-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: var(--white);
+  padding: 0.5rem;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: gray;
+}
+
+.status-indicator.healthy {
+  background: green;
+}
+
+.status-indicator.error {
+  background: red;
 }
 
 /* Add Roboto font from Google Fonts */
