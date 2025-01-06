@@ -27,15 +27,18 @@ export default async function handler(req, res) {
             throw new Error('API key is missing. Please set OPENAI_API_KEY in environment variables.');
         }
 
-        const prompt = `Create Google Ads appeal for ${businessName}. Format exactly like this:
+        const prompt = `Create Google Ads appeal for ${businessName}. Format the response EXACTLY like this:
 
-1. Core services, target audience, value prop
----
-2. Specific offerings, website function, benefits
----
-3. Compliance measures, corrective actions, review request
+[Business Model Overview]
+Core services, target audience, value proposition
 
-Each section must be separated by exactly "---" on its own line. No extra text before, between, or after sections. Professional tone.`;
+[Business Model Details]
+Specific offerings, website functionality, benefits
+
+[Additional Information]
+Compliance measures, corrective actions, review request
+
+Each section must be clearly marked with its header in square brackets. Do not include any additional text, explanations, or formatting. Use professional tone.`;
 
         console.log('Sending request to Deepseek API...');
         const requestBody = {
@@ -84,19 +87,32 @@ Each section must be separated by exactly "---" on its own line. No extra text b
         const fullResponse = response.data.choices[0].message.content.trim();
         console.log('Full Response Content:', fullResponse);
         
-        let sections = fullResponse.split(/\n\s*---\s*\n/).map(s => s.trim());
-        console.log('Split Sections:', sections);
+        // Extract sections using the header markers
+        const sections = {
+            overview: extractSection(fullResponse, '[Business Model Overview]', '[Business Model Details]'),
+            details: extractSection(fullResponse, '[Business Model Details]', '[Additional Information]'),
+            additional: extractSection(fullResponse, '[Additional Information]')
+        };
 
-        if (sections.length !== 3) {
-            console.error('Invalid section count:', sections.length);
-            console.error('Full response:', fullResponse);
-            throw new Error(`Invalid response format from API. Expected 3 sections but got ${sections.length}`);
+        console.log('Extracted Sections:', sections);
+
+        // Helper function to extract content between headers
+        function extractSection(text, startMarker, endMarker) {
+            const startIndex = text.indexOf(startMarker);
+            if (startIndex === -1) throw new Error(`Missing section: ${startMarker}`);
+            
+            const contentStart = startIndex + startMarker.length;
+            const contentEnd = endMarker ? text.indexOf(endMarker) : text.length;
+            
+            if (contentEnd === -1 && endMarker) throw new Error(`Missing section: ${endMarker}`);
+            
+            return text.slice(contentStart, contentEnd).trim();
         }
 
         res.status(200).json({
-            businessModelOverview: sections[0],
-            businessModelDetails: sections[1],
-            additionalInfo: sections[2]
+            businessModelOverview: sections.overview,
+            businessModelDetails: sections.details,
+            additionalInfo: sections.additional
         });
     } catch (error) {
         console.error('Error generating appeal:', {
