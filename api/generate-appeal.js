@@ -11,10 +11,21 @@ export default async function handler(req, res) {
   }
 
   try {
+    if (!businessName || typeof businessName !== 'string') {
+      return res.status(400).json({ error: 'Invalid business name' });
+    }
+    
     const generatedText = `This is your generated appeal for "${businessName}".`;
-    return res.status(200).json({ generatedText });
+    return res.status(200).json({ 
+      success: true,
+      generatedText 
+    });
   } catch (err) {
     console.error('Error generating appeal:', err);
-    return res.status(500).json({ error: 'Failed to generate appeal' });
+    return res.status(500).json({ 
+      success: false,
+      error: 'Failed to generate appeal',
+      message: err.message 
+    });
   }
 }
