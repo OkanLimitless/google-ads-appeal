@@ -18,7 +18,7 @@ export default async function handler(req, res) {
 
     try {
         const apiKey = process.env.OPENAI_API_KEY;
-        const apiBase = process.env.OPENAI_API_BASE || 'https://api.openai.com/v1';
+        const apiBase = process.env.OPENAI_API_BASE || 'https://api.deepseek.com/v1';
 
         console.log('Using API Base:', apiBase);
         console.log('API Key Present:', !!apiKey);
@@ -37,9 +37,9 @@ export default async function handler(req, res) {
 
 Each section must be separated by exactly "---" on its own line. No extra text before, between, or after sections. Professional tone.`;
 
-        console.log('Sending request to OpenAI API...');
+        console.log('Sending request to Deepseek API...');
         const requestBody = {
-            model: "gpt-3.5-turbo",
+            model: "deepseek-chat",
             messages: [{ role: "user", content: prompt }],
             max_tokens: 500,
             temperature: 0.3,
