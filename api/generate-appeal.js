@@ -83,8 +83,17 @@ Use a professional tone. Do not include any text before or after these bracketed
                 throw new Error('Request timed out. Please try again.');
             }
             
-            // Handle other errors
-            throw new Error(error.response?.data?.error || error.message || 'Failed to generate appeal');
+            // Handle API-specific errors
+            if (error.response?.data) {
+                throw new Error(
+                    typeof error.response.data === 'string' 
+                        ? error.response.data 
+                        : error.response.data.error || error.response.data.message || 'API request failed'
+                );
+            }
+            
+            // Handle network or other errors
+            throw new Error(error.message || 'Failed to generate appeal');
         });
 
         console.log('Received API response:', response.data);

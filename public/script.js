@@ -80,18 +80,19 @@ document.addEventListener('DOMContentLoaded', function() {
                     body: JSON.stringify({ businessName })
                 });
 
-                let errorMessage;
                 if (!response.ok) {
+                    // Clone the response before reading it
+                    const responseClone = response.clone();
+                    
                     // Try to parse error as JSON first
                     try {
                         const errorData = await response.json();
-                        errorMessage = errorData.details || errorData.error || `Request failed with status ${response.status}`;
+                        throw new Error(errorData.details || errorData.error || `Request failed with status ${response.status}`);
                     } catch (parseError) {
-                        // If JSON parsing fails, try to get text
-                        const errorText = await response.text();
-                        errorMessage = errorText || `Request failed with status ${response.status}`;
+                        // If JSON parsing fails, try to get text from the cloned response
+                        const errorText = await responseClone.text();
+                        throw new Error(errorText || `Request failed with status ${response.status}`);
                     }
-                    throw new Error(errorMessage);
                 }
 
                 const data = await response.json();
