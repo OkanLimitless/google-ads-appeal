@@ -44,68 +44,69 @@ Do you have any additional information you'd like us to take into account during
 Use a professional tone. Do not include any text before or after these bracketed sections. Do not include disclaimers, extra headings, or explanations. Each section must be clearly marked with its header in square brackets.`;
 
         console.log('Sending request to Deepseek API...');
-        const requestBody = {
-            model: "deepseek-chat",
-            messages: [{ role: "user", content: prompt }],
-            max_tokens: 500,
-            temperature: 0.3,
-            presence_penalty: 1.5
-        };
-
-        console.log('Request Body:', JSON.stringify(requestBody, null, 2));
-        console.log('Full Request URL:', `${apiBase}/chat/completions`);
-        console.log('Request Headers:', {
-            Authorization: `Bearer ${apiKey}`,
-            'Content-Type': 'application/json'
-        });
-
-        const response = await axios.post(`${apiBase}/chat/completions`, requestBody, {
-            headers: { 
-                Authorization: `Bearer ${apiKey}`,
-                'Content-Type': 'application/json'
-            },
-            timeout: 30000
-        }).catch(error => {
-            console.error('Deepseek API Error:', {
-                message: error.message,
-                response: error.response?.data,
-                status: error.response?.status,
-                headers: error.response?.headers,
-                config: {
-                    url: error.config?.url,
-                    method: error.config?.method,
-                    data: error.config?.data
-                }
-            });
-            
-            // Handle timeout specifically
-            if (error.code === 'ECONNABORTED') {
-                throw new Error('Request timed out. Please try again.');
-            }
-            
-            // Handle API-specific errors
-            if (error.response?.data) {
-                throw new Error(
-                    typeof error.response.data === 'string' 
-                        ? error.response.data 
-                        : error.response.data.error || error.response.data.message || 'API request failed'
-                );
-            }
-            
-            // Handle network or other errors
-            throw new Error(error.message || 'Failed to generate appeal');
-        });
-
-        console.log('Received API response:', response.data);
         
-        if (!response.data?.choices?.[0]?.message?.content) {
-            console.error('Invalid response structure:', response.data);
-            throw new Error('Invalid response structure from API');
+        // Add retry logic
+        const maxRetries = 2;
+        let retryCount = 0;
+        let lastError = null;
+
+        while (retryCount <= maxRetries) {
+            try {
+                const requestBody = {
+                    model: "deepseek-chat",
+                    messages: [{ role: "user", content: prompt }],
+                    max_tokens: 500,
+                    temperature: 0.3,
+                    presence_penalty: 1.5
+                };
+
+                console.log('Request Body:', JSON.stringify(requestBody, null, 2));
+                console.log('Full Request URL:', `${apiBase}/chat/completions`);
+                console.log('Request Headers:', {
+                    Authorization: `Bearer ${apiKey}`,
+                    'Content-Type': 'application/json'
+                });
+
+                const response = await axios.post(`${apiBase}/chat/completions`, requestBody, {
+                    headers: { 
+                        Authorization: `Bearer ${apiKey}`,
+                        'Content-Type': 'application/json'
+                    },
+                    timeout: 30000
+                });
+                
+                console.log('Received API response:', response.data);
+                
+                if (!response.data?.choices?.[0]?.message?.content) {
+                    console.error('Invalid response structure:', response.data);
+                    throw new Error('Invalid response structure from API');
+                }
+
+                const fullResponse = response.data.choices[0].message.content.trim();
+                console.log('Full Response Content:', fullResponse);
+                
+                // If we get here, the request was successful
+                break;
+            } catch (error) {
+                lastError = error;
+                
+                // Don't retry if it's not a timeout or network error
+                if (error.response && error.response.status !== 504 && error.code !== 'ECONNABORTED') {
+                    throw error;
+                }
+                
+                retryCount++;
+                if (retryCount <= maxRetries) {
+                    console.log(`Retry attempt ${retryCount} of ${maxRetries}...`);
+                    // Wait before retrying (exponential backoff)
+                    await new Promise(resolve => setTimeout(resolve, retryCount * 1000));
+                } else {
+                    console.error('Max retries reached, giving up');
+                    throw error;
+                }
+            }
         }
 
-        const fullResponse = response.data.choices[0].message.content.trim();
-        console.log('Full Response Content:', fullResponse);
-        
         // Extract sections using the header markers
         const sections = {
             overview: extractSection(fullResponse, '[Business Model Overview]', '[Business Model Details]'),
