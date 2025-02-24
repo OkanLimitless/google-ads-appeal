@@ -20,6 +20,11 @@ export default async function handler(req, res) {
         const apiKey = process.env.OPENAI_API_KEY;
         const apiBase = process.env.OPENAI_API_BASE || 'https://api.deepseek.com/v1';
 
+        console.log('API Configuration:', {
+            baseUrl: apiBase,
+            hasApiKey: !!apiKey
+        });
+
         if (!apiKey) {
             throw new Error('API key is missing. Please set OPENAI_API_KEY in environment variables.');
         }
@@ -40,7 +45,7 @@ Do you have any additional information you'd like us to take into account during
 
 Use a professional tone. Do not include any text before or after these bracketed sections. Do not include disclaimers, extra headings, or explanations. Each section must be clearly marked with its header in square brackets.`;
 
-        console.log('Sending request to API...');
+        console.log('Preparing API request...');
         
         const requestBody = {
             model: "deepseek-chat",
@@ -50,20 +55,63 @@ Use a professional tone. Do not include any text before or after these bracketed
             presence_penalty: 1.5
         };
 
-        // Optimized for speed with a single attempt and shorter timeout
-        const response = await axios.post(`${apiBase}/chat/completions`, requestBody, {
-            headers: { 
+        console.log('Making API request to:', `${apiBase}/chat/completions`);
+        
+        // Create axios instance with custom config
+        const instance = axios.create({
+            timeout: 8000,
+            headers: {
                 'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json'
-            },
-            timeout: 8000 // Set to 8 seconds to ensure we don't hit Vercel's 10s limit
+            }
         });
 
+        // Add request interceptor for logging
+        instance.interceptors.request.use(request => {
+            console.log('Request Config:', {
+                url: request.url,
+                method: request.method,
+                timeout: request.timeout
+            });
+            return request;
+        });
+
+        // Add response interceptor for logging
+        instance.interceptors.response.use(
+            response => {
+                console.log('Response received:', {
+                    status: response.status,
+                    hasData: !!response.data,
+                    hasChoices: !!response.data?.choices
+                });
+                return response;
+            },
+            error => {
+                console.error('API Error Details:', {
+                    message: error.message,
+                    code: error.code,
+                    status: error.response?.status,
+                    data: error.response?.data,
+                    isTimeout: error.code === 'ECONNABORTED',
+                    isNetworkError: !error.response,
+                    config: {
+                        url: error.config?.url,
+                        timeout: error.config?.timeout
+                    }
+                });
+                throw error;
+            }
+        );
+
+        const response = await instance.post(`${apiBase}/chat/completions`, requestBody);
+
         if (!response.data?.choices?.[0]?.message?.content) {
+            console.error('Invalid API response structure:', response.data);
             throw new Error('Invalid response structure from API');
         }
 
         const fullResponse = response.data.choices[0].message.content.trim();
+        console.log('Successfully received API response');
         
         // Extract sections using the header markers
         const sections = {
@@ -93,27 +141,34 @@ Use a professional tone. Do not include any text before or after these bracketed
     } catch (error) {
         console.error('Error generating appeal:', {
             message: error.message,
-            stack: error.stack,
-            response: error.response?.data
+            code: error.code,
+            response: error.response?.data,
+            stack: error.stack
         });
         
         // Provide more specific error messages
         let errorMessage = 'Failed to generate appeal';
+        let errorDetails = error.message;
+
         if (error.code === 'ECONNABORTED') {
-            errorMessage = 'The request timed out. Please try again.';
+            errorMessage = 'The request to Deepseek API timed out. Please try again.';
+            errorDetails = 'Request took too long to complete';
+        } else if (!error.response) {
+            errorMessage = 'Network error occurred while connecting to Deepseek API';
+            errorDetails = 'Could not reach the API server';
         } else if (error.response?.status === 429) {
-            errorMessage = 'Too many requests. Please wait a moment and try again.';
+            errorMessage = 'Too many requests to Deepseek API. Please wait a moment and try again.';
         } else if (error.response?.status === 401) {
-            errorMessage = 'API authentication failed. Please check your API key.';
+            errorMessage = 'Failed to authenticate with Deepseek API. Please check your API key.';
         } else if (error.response?.data?.error) {
             errorMessage = typeof error.response.data.error === 'string' 
                 ? error.response.data.error 
-                : error.response.data.error.message || 'API request failed';
+                : error.response.data.error.message || 'Deepseek API request failed';
         }
         
         res.status(500).json({ 
             error: errorMessage,
-            details: error.message
+            details: errorDetails
         });
     }
 }
