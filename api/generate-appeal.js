@@ -64,7 +64,7 @@ Use a professional tone. Do not include any text before or after these bracketed
                 Authorization: `Bearer ${apiKey}`,
                 'Content-Type': 'application/json'
             },
-            timeout: 10000
+            timeout: 30000
         }).catch(error => {
             console.error('Deepseek API Error:', {
                 message: error.message,
@@ -77,7 +77,14 @@ Use a professional tone. Do not include any text before or after these bracketed
                     data: error.config?.data
                 }
             });
-            throw error;
+            
+            // Handle timeout specifically
+            if (error.code === 'ECONNABORTED') {
+                throw new Error('Request timed out. Please try again.');
+            }
+            
+            // Handle other errors
+            throw new Error(error.response?.data?.error || error.message || 'Failed to generate appeal');
         });
 
         console.log('Received API response:', response.data);
