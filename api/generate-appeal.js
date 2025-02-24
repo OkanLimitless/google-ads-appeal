@@ -18,10 +18,6 @@ export default async function handler(req, res) {
 
     try {
         const apiKey = process.env.OPENAI_API_KEY;
-        const apiBase = process.env.OPENAI_API_BASE || 'https://api.deepseek.com/v1';
-
-        console.log('Using API Base:', apiBase);
-        console.log('API Key Present:', !!apiKey);
 
         if (!apiKey) {
             throw new Error('API key is missing. Please set OPENAI_API_KEY in environment variables.');
@@ -43,78 +39,37 @@ Do you have any additional information you'd like us to take into account during
 
 Use a professional tone. Do not include any text before or after these bracketed sections. Do not include disclaimers, extra headings, or explanations. Each section must be clearly marked with its header in square brackets.`;
 
-        console.log('Sending request to Deepseek API...');
+        console.log('Sending request to OpenAI API...');
         
-        // Add retry logic
-        const maxRetries = 2;
-        let retryCount = 0;
-        let lastError = null;
+        const requestBody = {
+            model: "gpt-3.5-turbo",
+            messages: [{ role: "user", content: prompt }],
+            max_tokens: 500,
+            temperature: 0.3,
+            presence_penalty: 1.5
+        };
 
-        while (retryCount <= maxRetries) {
-            try {
-                const requestBody = {
-                    model: "deepseek-chat",
-                    messages: [{ role: "user", content: prompt }],
-                    max_tokens: 500,
-                    temperature: 0.3,
-                    presence_penalty: 1.5
-                };
+        // Optimized for speed with a single attempt and shorter timeout
+        const response = await axios.post('https://api.openai.com/v1/chat/completions', requestBody, {
+            headers: { 
+                'Authorization': `Bearer ${apiKey}`,
+                'Content-Type': 'application/json'
+            },
+            timeout: 8000 // Set to 8 seconds to ensure we don't hit Vercel's 10s limit
+        });
 
-                console.log('Request Body:', JSON.stringify(requestBody, null, 2));
-                console.log('Full Request URL:', `${apiBase}/chat/completions`);
-                console.log('Request Headers:', {
-                    Authorization: `Bearer ${apiKey}`,
-                    'Content-Type': 'application/json'
-                });
-
-                const response = await axios.post(`${apiBase}/chat/completions`, requestBody, {
-                    headers: { 
-                        Authorization: `Bearer ${apiKey}`,
-                        'Content-Type': 'application/json'
-                    },
-                    timeout: 30000
-                });
-                
-                console.log('Received API response:', response.data);
-                
-                if (!response.data?.choices?.[0]?.message?.content) {
-                    console.error('Invalid response structure:', response.data);
-                    throw new Error('Invalid response structure from API');
-                }
-
-                const fullResponse = response.data.choices[0].message.content.trim();
-                console.log('Full Response Content:', fullResponse);
-                
-                // If we get here, the request was successful
-                break;
-            } catch (error) {
-                lastError = error;
-                
-                // Don't retry if it's not a timeout or network error
-                if (error.response && error.response.status !== 504 && error.code !== 'ECONNABORTED') {
-                    throw error;
-                }
-                
-                retryCount++;
-                if (retryCount <= maxRetries) {
-                    console.log(`Retry attempt ${retryCount} of ${maxRetries}...`);
-                    // Wait before retrying (exponential backoff)
-                    await new Promise(resolve => setTimeout(resolve, retryCount * 1000));
-                } else {
-                    console.error('Max retries reached, giving up');
-                    throw error;
-                }
-            }
+        if (!response.data?.choices?.[0]?.message?.content) {
+            throw new Error('Invalid response structure from API');
         }
 
+        const fullResponse = response.data.choices[0].message.content.trim();
+        
         // Extract sections using the header markers
         const sections = {
             overview: extractSection(fullResponse, '[Business Model Overview]', '[Business Model Details]'),
             details: extractSection(fullResponse, '[Business Model Details]', '[Additional Information]'),
             additional: extractSection(fullResponse, '[Additional Information]')
         };
-
-        console.log('Extracted Sections:', sections);
 
         // Helper function to extract content between headers
         function extractSection(text, startMarker, endMarker) {
@@ -140,10 +95,20 @@ Use a professional tone. Do not include any text before or after these bracketed
             stack: error.stack,
             response: error.response?.data
         });
+        
+        // Provide more specific error messages
+        let errorMessage = 'Failed to generate appeal';
+        if (error.code === 'ECONNABORTED') {
+            errorMessage = 'The request timed out. Please try again.';
+        } else if (error.response?.status === 429) {
+            errorMessage = 'Too many requests. Please wait a moment and try again.';
+        } else if (error.response?.data?.error) {
+            errorMessage = error.response.data.error;
+        }
+        
         res.status(500).json({ 
-            error: 'Failed to generate appeal',
-            details: error.message,
-            stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+            error: errorMessage,
+            details: error.message
         });
     }
 }
