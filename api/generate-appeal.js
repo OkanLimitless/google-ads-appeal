@@ -18,6 +18,7 @@ export default async function handler(req, res) {
 
     try {
         const apiKey = process.env.OPENAI_API_KEY;
+        const apiBase = process.env.OPENAI_API_BASE || 'https://api.deepseek.com/v1';
 
         if (!apiKey) {
             throw new Error('API key is missing. Please set OPENAI_API_KEY in environment variables.');
@@ -39,10 +40,10 @@ Do you have any additional information you'd like us to take into account during
 
 Use a professional tone. Do not include any text before or after these bracketed sections. Do not include disclaimers, extra headings, or explanations. Each section must be clearly marked with its header in square brackets.`;
 
-        console.log('Sending request to OpenAI API...');
+        console.log('Sending request to API...');
         
         const requestBody = {
-            model: "gpt-3.5-turbo",
+            model: "deepseek-chat",
             messages: [{ role: "user", content: prompt }],
             max_tokens: 500,
             temperature: 0.3,
@@ -50,7 +51,7 @@ Use a professional tone. Do not include any text before or after these bracketed
         };
 
         // Optimized for speed with a single attempt and shorter timeout
-        const response = await axios.post('https://api.openai.com/v1/chat/completions', requestBody, {
+        const response = await axios.post(`${apiBase}/chat/completions`, requestBody, {
             headers: { 
                 'Authorization': `Bearer ${apiKey}`,
                 'Content-Type': 'application/json'
@@ -102,8 +103,12 @@ Use a professional tone. Do not include any text before or after these bracketed
             errorMessage = 'The request timed out. Please try again.';
         } else if (error.response?.status === 429) {
             errorMessage = 'Too many requests. Please wait a moment and try again.';
+        } else if (error.response?.status === 401) {
+            errorMessage = 'API authentication failed. Please check your API key.';
         } else if (error.response?.data?.error) {
-            errorMessage = error.response.data.error;
+            errorMessage = typeof error.response.data.error === 'string' 
+                ? error.response.data.error 
+                : error.response.data.error.message || 'API request failed';
         }
         
         res.status(500).json({ 
